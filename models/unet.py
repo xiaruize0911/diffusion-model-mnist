@@ -36,22 +36,22 @@ class Encoder(nn.Module):
                 DoubleConvBlock(channels[i], channels[i + 1])
             )
 
-    def forward(self, x: torch.Tensor) -> list[torch.Tensor]:
+    def forward(self, x: torch.Tensor):
         """
-        Forward pass of Encoder`.
+        Forward pass of Encoder.
         
         Args:
-            x (torch.Tensor): Upsampled features
+            x (torch.Tensor): Input features
             
         Returns:
-            torch.Tensor: Processed features of shape (B, out_channels, H*2, W*2)
+            tuple: (encoder_features, final_encoded_features)
         """
-
         encoder_features = []
         for block in self.encoder_blocks:
-            x = block(x)
             encoder_features.append(x)
-        return encoder_features
+            x = block(x)
+        encoder_features.append(x)
+        return encoder_features, x
 
 class Decoder(nn.Module):
     """Decoder"""
@@ -64,32 +64,24 @@ class Decoder(nn.Module):
         """
         super().__init__()
         self.decoder_blocks = nn.ModuleList()
-        for i in range(len(channels) - 1):
+        
+        for i in range(0, len(channels) - 1):
+            input_channels = channels[i]
+            output_channels = channels[i + 1]
+            
             self.decoder_blocks.append(
                 nn.Sequential(
-                    nn.ConvTranspose2d(channels[i], channels[i + 1], kernel_size=2, stride=2),
-                    DoubleConvBlock(channels[i], channels[i+1])
+                    nn.ConvTranspose2d(channels[i]*2, channels[i], kernel_size=1, stride=1),
+                    DoubleConvBlock(input_channels, output_channels)
                 )
             )
 
-    def crop_to_fit(self, feature: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
-        """
-        Crop the feature map to fit the target size.
-
-        Args:
-            feature (torch.Tensor): The feature map to crop.
-            target (torch.Tensor): The target tensor to match size.
-
-        Returns:
-            torch.Tensor: Cropped feature map.
-        """
-        _, _, H, W = target.size()
-        return F.interpolate(feature, size=(H, W), mode="bilinear", align_corners=False)
-    
     def forward(self, x: torch.Tensor, encoder_features: list[torch.Tensor]) -> torch.Tensor:
         for i, block in enumerate(self.decoder_blocks):
-            if i < len(encoder_features):
-                x = torch.cat([x, self.crop_to_fit(encoder_features[i], x)], dim=1)
+            # print('x.shape 1:',x.shape)
+            # print('encoder_features[i].shape:', encoder_features[i].shape)
+            x = torch.cat([x, encoder_features[i]], dim=1)
+            # print('x.shape 2:',x.shape)
             x = block(x)
         return x
 
@@ -98,12 +90,17 @@ class UNet(nn.Module):
 
     def __init__(self, in_channels: int, out_channels: int, mid_channels: int) -> None:
         super().__init__()
-        channels = torch.linspace(in_channels, mid_channels, steps=5).int().tolist()
+        channels = [1, 2, 4, 8, 16,32,64]
         self.encoder = Encoder(channels)
-        self.decoder = Decoder(channels[::-1][:-1])
-        self.output_conv = nn.Conv2d(channels[1], out_channels, kernel_size=1)
+        # For decoder, reverse channels and remove the last one (input channel)
+        decoder_channels = channels[::-1]  # [64, 32, 16, 8, 4, 2, 1]
+        self.decoder = Decoder(decoder_channels[:-1])  # [64, 32, 16, 8, 4, 2]
+        self.output_conv = nn.Conv2d(2, out_channels, kernel_size=1)  # Final output layer
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        encoder_features = self.encoder(x)
+        # print("Input shape:", x.shape)
+        encoder_features, x = self.encoder(x)
+        encoder_features = list(reversed(encoder_features))
+        # print(x.shape)
         x = self.decoder(x, encoder_features)
         return self.output_conv(x)

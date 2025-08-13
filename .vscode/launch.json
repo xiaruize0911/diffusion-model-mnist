@@ -1,0 +1,40 @@
+{
+    "configurations": [
+        {
+            "type": "debugpy",
+            "request": "launch",
+            "name": "Train Diffusion Model",
+            "program": "${workspaceFolder}/${input:trainScript}",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true
+        },
+        {
+            "type": "debugpy",
+            "request": "launch",
+            "name": "Generate Images",
+            "program": "${workspaceFolder}/${input:generateScript}",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true
+        }
+    ],
+    "inputs": [
+        {
+            "type": "pickString",
+            "id": "trainScript",
+            "description": "Select the training script to debug",
+            "options": [
+                "main.py"
+            ]
+        },
+        {
+            "type": "pickString",
+            "id": "generateScript",
+            "description": "Select the generation script to debug",
+            "options": [
+                "generate.py"
+            ]
+        }
+    ]
+}

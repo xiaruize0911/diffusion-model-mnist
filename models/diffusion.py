@@ -1,5 +1,6 @@
 """Diffusion model implementation."""
 
+from utils.noise_scheduler import NoiseScheduler
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -12,7 +13,7 @@ class DiffusionModel(nn.Module):
     """Complete diffusion model with forward and reverse processes."""
 
     def __init__(self, timesteps: int = Config.TIMESTEPS, beta_start: float = Config.BETA_START, beta_end: float = Config.BETA_END,
-                 in_channels: int = 1, model_channels: int = Config.MODEL_CHANNELS, time_embed_dim: int = Config.TIME_EMBED_DIM):
+                 in_channels: int = 1, out_channels: int = 1, mid_channels: int = Config.MODEL_CHANNELS):
         """
         Initialize DiffusionModel.
         
@@ -26,24 +27,9 @@ class DiffusionModel(nn.Module):
         """
         super().__init__()
         self.timesteps = timesteps
-        self.beta_schedule = NoiseScheduler(timesteps=timesteps, beta_start=beta_start, beta_end=beta_end,schedule_type=Config.SCHEDULE_TYPE)
-        
+        self.beta_schedule = NoiseScheduler(timesteps=timesteps, beta_start=beta_start, beta_end=beta_end,schedule_type=Config.SCHEDULER_TYPE)
+        self.unet = UNet(in_channels=in_channels, out_channels=out_channels, mid_channels=mid_channels)
 
-    def forward_diffusion(self, x0: torch.Tensor, t: torch.Tensor, noise: torch.Tensor = None) -> tuple[torch.Tensor, torch.Tensor]:
-        """
-        Forward diffusion process q(x_t | x_0).
-        
-        Args:
-            x0 (torch.Tensor): Clean images of shape (B, C, H, W)
-            t (torch.Tensor): Timesteps of shape (B,)
-            noise (torch.Tensor, optional): Noise tensor, will be sampled if None
-            
-        Returns:
-            tuple[torch.Tensor, torch.Tensor]: (noisy_images, noise) both of shape (B, C, H, W)
-        """
-        # TODO: Implement q(x_t | x_0) = N(sqrt(alpha_cumprod_t) * x0, (1 - alpha_cumprod_t) * I)
-        pass
-        
     def reverse_diffusion_step(self, xt: torch.Tensor, t: torch.Tensor, predicted_noise: torch.Tensor) -> torch.Tensor:
         """
         Single step of reverse diffusion process p(x_{t-1} | x_t).
@@ -56,9 +42,15 @@ class DiffusionModel(nn.Module):
         Returns:
             torch.Tensor: Less noisy images x_{t-1} of shape (B, C, H, W)
         """
-        # TODO: Implement p(x_{t-1} | x_t) using predicted noise and posterior mean/variance
-        pass
-        
+        alpha_t = self.beta_schedule.alphas[t].view(-1, 1, 1, 1)  # scalar controlling how much of x_t remains
+        beta_t = self.beta_schedule.betas[t].view(-1, 1, 1, 1)    # variance added at step t
+        alpha_bar_t = self.beta_schedule.alpha_bars[t].view(-1, 1, 1, 1)  # cumulative product up to step t
+        sigma_t = torch.sqrt(beta_t)
+        mean = (1.0 / torch.sqrt(alpha_t)) * (
+            xt - ((1.0 - alpha_t) / torch.sqrt(1.0 - alpha_bar_t)) * predicted_noise
+        )
+        return mean + sigma_t * torch.randn_like(xt)
+
     def forward(self, x0: torch.Tensor, t: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Forward pass for training.
@@ -70,9 +62,12 @@ class DiffusionModel(nn.Module):
         Returns:
             tuple[torch.Tensor, torch.Tensor]: (predicted_noise, actual_noise)
         """
-        # TODO: Apply forward diffusion + U-Net noise prediction
-        pass
-        
+        # print('diffusion forward t:', t.shape)
+        noised_x, actual_noise = self.beta_schedule.add_noise(x0, t)
+        # print('debug: ', noised_x.shape,actual_noise.shape)
+        predicted_noise = self.unet(noised_x)
+        return predicted_noise, actual_noise
+
     @torch.no_grad()
     def sample(self, shape: tuple, device: torch.device) -> torch.Tensor:
         """
@@ -81,14 +76,16 @@ class DiffusionModel(nn.Module):
         Args:
             shape (tuple): Shape of samples to generate (B, C, H, W)
             device (torch.device): Device to generate samples on
-            
-        Returns:
-            torch.Tensor: Generated samples of shape (B, C, H, W)
         """
         # TODO: Start from noise, iteratively denoise for all timesteps
-        pass
-        
-    def compute_loss(self, x0: torch.Tensor, t: torch.Tensor) -> torch.Tensor:
+        xt = torch.randn(shape, device=device)
+        for t in reversed(range(self.beta_schedule.timesteps)):
+            t_tensor = torch.full((shape[0],), t, device=device)
+            predicted_noise = self.unet(xt)
+            xt = self.reverse_diffusion_step(xt, t_tensor, predicted_noise)
+        return xt
+
+    def compute_loss(self, predicted_noise: torch.Tensor, actual_noise: torch.Tensor) -> torch.Tensor:
         """
         Compute the diffusion loss (MSE between predicted and actual noise).
         
@@ -99,5 +96,4 @@ class DiffusionModel(nn.Module):
         Returns:
             torch.Tensor: Scalar loss value
         """
-        # TODO: MSE loss between predicted and actual noise
-        pass
+        return F.mse_loss(predicted_noise, actual_noise)
