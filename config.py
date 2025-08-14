@@ -15,6 +15,7 @@ class Config:
     # Model settings
     MODEL_CHANNELS = 64
     SCHEDULER_TYPE = 'cosine'
+    MODEL_TYPE = 'unet'
 
     # Diffusion settings
     TIMESTEPS = 300
@@ -29,8 +30,12 @@ class Config:
     # Paths
     CHECKPOINT_DIR = "./checkpoints"
     OUTPUT_DIR = "./outputs"
+    TENSORBOARD_LOG_DIR = "./runs"
     SAVE_EVERY = 100
     NUM_SAMPLES = 16
 
     # Save Config
     SAVE_EACH_EPOCHS = 100
+    
+    # TensorBoard logging settings
+    LOG_PARAMS_EVERY = 50  # Log model parameters every N epochs
