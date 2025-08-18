@@ -63,7 +63,7 @@ python generate.py --checkpoint checkpoints/diffusion_model_unet_2000epochs_300t
 Compute FID score for a trained model:
 
 ```bash
-python validation.py --experiment_name 'diffusion_model_unet_2000epochs_300timesteps_0.0001lr' --model_type 'unet' --path_to_model 'checkpoints/diffusion_model_unet_2000epochs_300timesteps_0.0001lr/model_epoch_1999.pth'
+python validation.py --experiment_name 'diffusion_model_unet_2000epochs_300timesteps_0.0001lr' --model_type unet --model_index 1999
 ```
 
 ## Key Components
@@ -79,5 +79,5 @@ python validation.py --experiment_name 'diffusion_model_unet_2000epochs_300times
 | Model Type | FID Score |
 |------------|-----------|
 | U-Net      |  34.3883  |
-| CNN        |  57.8870  |
 | ResNet     |  45.0198  |
+| CNN        |  57.8870  |

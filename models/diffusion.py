@@ -69,9 +69,9 @@ class DiffusionModel(nn.Module):
         Returns:
             tuple[torch.Tensor, torch.Tensor]: (predicted_noise, actual_noise)
         """
-    # Debug: print shape of t during forward diffusion
+        # Debug: print shape of t during forward diffusion
         noised_x, actual_noise = self.beta_schedule.add_noise(x0, t)
-    # Debug: print shapes of noised_x and actual_noise
+        # Debug: print shapes of noised_x and actual_noise
         predicted_noise = self.net(noised_x)
         return predicted_noise, actual_noise
 
@@ -84,7 +84,7 @@ class DiffusionModel(nn.Module):
             shape (tuple): Shape of samples to generate (B, C, H, W)
             device (torch.device): Device to generate samples on
         """
-    # TODO: Implement iterative denoising starting from pure noise
+        # TODO: Implement iterative denoising starting from pure noise
         xt = torch.randn(shape, device=device)
         for t in reversed(range(self.beta_schedule.timesteps)):
             t_tensor = torch.full((shape[0],), t, device=device)

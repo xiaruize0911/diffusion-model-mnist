@@ -64,7 +64,7 @@ class TensorBoardLogger:
         if step is None:
             step = self.step
             
-    # Generate image grid and log to TensorBoard
+        # Generate image grid and log to TensorBoard
         grid = make_grid(images, nrow=nrow, normalize=normalize, scale_each=True)
         self.writer.add_image(tag, grid, step)
         
@@ -138,7 +138,7 @@ class TensorBoardLogger:
         if step is None:
             step = self.step
             
-    # Log noise schedule values as histograms in TensorBoard
+        # Log noise schedule values as histograms in TensorBoard
         self.log_histogram('Noise_Schedule/Betas', betas, step)
         self.log_histogram('Noise_Schedule/Alphas', alphas, step)
         self.log_histogram('Noise_Schedule/Alpha_Bars', alpha_bars, step)

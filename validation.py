@@ -32,19 +32,19 @@ class FIDValidator:
         Returns:
             FID score as float
         """
-    # Convert images to float32 and ensure values are in [0, 1] for FID computation
+        # Convert images to float32 and ensure values are in [0, 1] for FID computation
         # Move to CPU for FID computation to avoid MPS linalg issues
         real_images = real_images.to('cpu').to(torch.float32).clamp(0, 1)
         generated_images = generated_images.to('cpu').to(torch.float32).clamp(0, 1)
 
-    # Update FID metric with real and generated images
+        # Update FID metric with real and generated images
         self.fid.update(real_images, is_real=True)
         self.fid.update(generated_images, is_real=False)
 
-    # Calculate the FID score using the accumulated statistics
+        # Calculate the FID score using the accumulated statistics
         fid_score = self.fid.compute()
 
-    # Reset the FID metric to clear internal state for future computations
+        # Reset the FID metric to clear internal state for future computations
         self.fid.reset()
 
         return fid_score.item()
@@ -65,7 +65,7 @@ class FIDValidator:
         real_images = []
         generated_images = []
         
-    # Gather real images from the dataloader
+        # Gather real images from the dataloader
         with torch.no_grad():
             for batch_idx, (images, _) in enumerate(real_dataloader):
                 real_images.append(images)
@@ -74,10 +74,10 @@ class FIDValidator:
         
         real_images = torch.cat(real_images, dim=0)[:num_samples]
         
-    # Generate synthetic images using the diffusion model
+        # Generate synthetic images using the diffusion model
         generated_images = model.sample(shape=(num_samples,1,28,28))
         
-    # Move images to the target device and compute FID score
+        # Move images to the target device and compute FID score
         real_images = real_images.to(self.device)
         generated_images = generated_images.to(self.device)
 
@@ -92,9 +92,8 @@ class FIDValidator:
         
         return fid_score
 
-# Main entry point for validation script
 def main():
-
+    """Main entry point for validation script with argument parsing."""
     parser = argparse.ArgumentParser()
     parser.add_argument('--experiment_name', type=str, default=None, help='Custom experiment name for TensorBoard')
     parser.add_argument('--model_type', type=str, default=Config.MODEL_TYPE, choices=['unet', 'cnn', 'resnet'], help='Type of model to use (unet or cnn)')

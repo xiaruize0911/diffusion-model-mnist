@@ -71,13 +71,13 @@ def train_model(experiment_name=None):
             if global_step % 10 == 0:
                 logger.writer.flush()
         
-    # Log metrics and samples at the end of each epoch
+        # Log metrics and samples at the end of each epoch
         avg_epoch_loss = sum(epoch_losses) / len(epoch_losses) if epoch_losses else 0
         logger.log_scalar('Loss/Epoch_Average', avg_epoch_loss, epoch)
         
         print(f'Epoch {epoch+1}: avg_loss {avg_epoch_loss:.6f}')
         
-    # Save model checkpoints and generate sample images
+        # Save model checkpoints and generate sample images
         if (epoch % Config.SAVE_EACH_EPOCHS == 0) or (epoch == 1999):
             checkpoint_path = os.path.join(Config.CHECKPOINT_DIR, f"model_epoch_{epoch}.pth")
             os.makedirs(Config.CHECKPOINT_DIR, exist_ok=True)
@@ -96,11 +96,11 @@ def train_model(experiment_name=None):
                 save_path = Config.OUTPUT_DIR + f'/pic{epoch}.jpg'
                 save_images(generated_images, save_path, normalize=False)
         
-    # Log model parameters and gradients for analysis
+        # Log model parameters and gradients for analysis
         if epoch % Config.LOG_PARAMS_EVERY == 0:
             logger.log_model_parameters(model, epoch)
             
-    # Ensure all TensorBoard logs are flushed to disk
+        # Ensure all TensorBoard logs are flushed to disk
         logger.writer.flush()
 
     logger.close()
@@ -135,7 +135,7 @@ def main() -> None:
     if args.model_type != Config.MODEL_TYPE:
         Config.MODEL_TYPE = args.model_type
     if args.experiment_name is not None:
-    # Use custom experiment name if specified
+        # Use custom experiment name if specified
         experiment_name = args.experiment_name
     else:
         experiment_name = f'diffusion_model_{Config.MODEL_TYPE}_{Config.EPOCHS}epochs_{Config.TIMESTEPS}timesteps_{Config.LEARNING_RATE}lr'
