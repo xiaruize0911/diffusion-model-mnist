@@ -21,9 +21,9 @@ def save_images(images: torch.Tensor, filepath: str, nrow: int = 4, normalize: b
     Returns:
         None
     """
-    os.makedirs(os.path.dirname(filepath), exist_ok=True)  # Ensure the output directory exists
+    os.makedirs(os.path.dirname(filepath), exist_ok=True)  # Create output directory if it does not exist
 
-    # Create a grid of images and save as a single file
+    # Combine images into a grid and save as a single image file
     grid = make_grid(images, nrow=nrow, normalize=normalize)
     torchvision.utils.save_image(grid, filepath)
     print(f"Image grid saved to {filepath}")

@@ -20,7 +20,7 @@ def load_model(checkpoint_path: str, device: torch.device) -> DiffusionModel:
     Returns:
         DiffusionModel: Loaded model
     """
-    file_names = os.listdir(checkpoint_path)  # Fix: Use the provided checkpoint_path
+    file_names = os.listdir(checkpoint_path)  # List all files in the checkpoint directory
     file_names.sort()
     latest_checkpoint = file_names[-1] if file_names else None
     
@@ -30,7 +30,7 @@ def load_model(checkpoint_path: str, device: torch.device) -> DiffusionModel:
     checkpoint_full_path = os.path.join(checkpoint_path, latest_checkpoint)
     model = DiffusionModel().to(device)
     model.load_state_dict(torch.load(checkpoint_full_path, map_location=device))
-    model.eval()  # Fix: Set the model to evaluation mode
+    model.eval()  # Set model to evaluation mode for generation
     return model
 
 
@@ -51,7 +51,7 @@ def generate_images(model: DiffusionModel, num_samples: int, device: torch.devic
     """
     with torch.no_grad():
         generated_images = model.sample((num_samples, Config.CHANNELS, Config.IMAGE_SIZE, Config.IMAGE_SIZE), device)
-        generated_images = torch.clamp(generated_images, 0.0, 1.0)  # Fix: Clamp values to [0, 1]
+    generated_images = torch.clamp(generated_images, 0.0, 1.0)  # Clamp generated image values to [0, 1]
     if save_path:
         save_images(generated_images, save_path)
     if show_images:
@@ -66,7 +66,7 @@ def main() -> None:
         None
     """
     model = load_model(Config.CHECKPOINT_DIR, Config.DEVICE)
-    img = generate_images(model, Config.NUM_SAMPLES, Config.DEVICE, save_path=Config.OUTPUT_DIR+'pic.jpg', show_images=True)  # Fix: Pass save_path and show_images explicitly
+    img = generate_images(model, Config.NUM_SAMPLES, Config.DEVICE, save_path=Config.OUTPUT_DIR+'pic.jpg', show_images=True)  # Generate and optionally display images, saving to file
 
 if __name__ == "__main__":
     main()

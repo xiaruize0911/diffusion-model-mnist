@@ -10,16 +10,16 @@ from config import Config
 def get_mnist_dataloader(data_dir: str = Config.DATA_DIR, batch_size: int = Config.BATCH_SIZE, 
                         train: bool = True, download: bool = True) -> DataLoader:
     """
-    Create MNIST dataloader with appropriate transforms for diffusion model.
+    Download MNIST dataset and create a DataLoader with normalization for diffusion models.
     
     Args:
-        data_dir (str): Directory to store MNIST data
-        batch_size (int): Batch size for dataloader
-        train (bool): Whether to load training or test set
-        download (bool): Whether to download MNIST if not present
+        data_dir (str): Directory to store or load MNIST data
+        batch_size (int): Number of samples per batch
+        train (bool): Load training set if True, test set if False
+        download (bool): Download MNIST if not already present
     
     Returns:
-        DataLoader: PyTorch DataLoader for MNIST dataset
+        DataLoader: PyTorch DataLoader for normalized MNIST dataset
     """
     mnist = datasets.MNIST(data_dir, train=train, download=download,
                             transform=transforms.Compose([
@@ -33,25 +33,25 @@ def get_mnist_dataloader(data_dir: str = Config.DATA_DIR, batch_size: int = Conf
 
 def denormalize_images(images: torch.Tensor) -> torch.Tensor:
     """
-    Convert images from [-1, 1] range back to [0, 1] range.
+    Transform images from [-1, 1] range to [0, 1] range for visualization or saving.
     
     Args:
-        images (torch.Tensor): Tensor of images in [-1, 1] range
+        images (torch.Tensor): Input images in [-1, 1] range
     
     Returns:
-        torch.Tensor: Images in [0, 1] range
+        torch.Tensor: Output images in [0, 1] range
     """
     return (images + 1) / 2
 
 
 def normalize_images(images: torch.Tensor) -> torch.Tensor:
     """
-    Convert images from [0, 1] range to [-1, 1] range.
+    Transform images from [0, 1] range to [-1, 1] range for model input.
     
     Args:
-        images (torch.Tensor): Tensor of images in [0, 1] range
+        images (torch.Tensor): Input images in [0, 1] range
     
     Returns:
-        torch.Tensor: Images in [-1, 1] range
+        torch.Tensor: Output images in [-1, 1] range
     """
     return 2 * images - 1

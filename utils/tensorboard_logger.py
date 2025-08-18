@@ -64,7 +64,7 @@ class TensorBoardLogger:
         if step is None:
             step = self.step
             
-        # Create and log image grid
+    # Generate image grid and log to TensorBoard
         grid = make_grid(images, nrow=nrow, normalize=normalize, scale_each=True)
         self.writer.add_image(tag, grid, step)
         
@@ -97,7 +97,7 @@ class TensorBoardLogger:
             
         for name, param in model.named_parameters():
             if param.requires_grad:
-                # Log parameter distributions
+                # Log model parameter distributions to TensorBoard
                 self.log_histogram(f'Parameters/{name}', param.data, step)
                 
                 # Log gradient distributions if available
@@ -138,7 +138,7 @@ class TensorBoardLogger:
         if step is None:
             step = self.step
             
-        # Log noise schedule as histograms
+    # Log noise schedule values as histograms in TensorBoard
         self.log_histogram('Noise_Schedule/Betas', betas, step)
         self.log_histogram('Noise_Schedule/Alphas', alphas, step)
         self.log_histogram('Noise_Schedule/Alpha_Bars', alpha_bars, step)

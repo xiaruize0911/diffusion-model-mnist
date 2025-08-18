@@ -78,10 +78,10 @@ class Decoder(nn.Module):
 
     def forward(self, x: torch.Tensor, encoder_features: list[torch.Tensor]) -> torch.Tensor:
         for i, block in enumerate(self.decoder_blocks):
-            # print('x.shape 1:',x.shape)
-            # print('encoder_features[i].shape:', encoder_features[i].shape)
+            # Debug: print shape of x after first encoder block
+            # Debug: print shape of encoder features at each stage
             x = torch.cat([x, encoder_features[i]], dim=1)
-            # print('x.shape 2:',x.shape)
+            # Debug: print shape of x after decoder block
             x = block(x)
         return x
 
@@ -92,7 +92,7 @@ class UNet(nn.Module):
         super().__init__()
         channels = [1, 2, 4, 8, 16,32,64]
         self.encoder = Encoder(channels)
-        # For decoder, reverse channels and remove the last one (input channel)
+    # Prepare decoder channels by reversing and removing input channel
         decoder_channels = channels[::-1]  # [64, 32, 16, 8, 4, 2, 1]
         self.decoder = Decoder(decoder_channels[:-1])  # [64, 32, 16, 8, 4, 2]
         self.output_conv = nn.Conv2d(2, out_channels, kernel_size=1)  # Final output layer

@@ -28,7 +28,7 @@ class NoiseScheduler:
         self.schedule_type = schedule_type
         self.device = device
         
-        # Precompute the noise schedule
+    # Precompute noise schedule for all timesteps
         if self.schedule_type == 'cosine':
             self.betas = self.cosine_beta_schedule()
         else:
@@ -80,12 +80,12 @@ class NoiseScheduler:
         if noise is None:
             noise = torch.randn_like(x0)
         
-        # Get the appropriate alpha_bar values for the timesteps
-        # print('t.shape:', t.shape)
+    # Retrieve alpha_bar values for specified timesteps
+    # Debug: print shape of t tensor
         alpha_bar_t = self.alpha_bars[t].view(-1, *([1] * (x0.ndim - 1)))
         sqrt_alpha_bar_t = torch.sqrt(alpha_bar_t)
         sqrt_one_minus_alpha_bar_t = torch.sqrt(1.0 - alpha_bar_t)
 
-        # Apply forward diffusion: x_t = sqrt(alpha_bar_t) * x_0 + sqrt(1 - alpha_bar_t) * noise
+    # Apply forward diffusion equation: x_t = sqrt(alpha_bar_t) * x_0 + sqrt(1 - alpha_bar_t) * noise
         x_t = sqrt_alpha_bar_t * x0 + sqrt_one_minus_alpha_bar_t * noise
         return x_t, noise
