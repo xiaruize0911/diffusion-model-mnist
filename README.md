@@ -74,5 +74,10 @@ python validation.py --experiment_name 'diffusion_model_unet_2000epochs_300times
 - **Generation**: Iteratively denoises random noise to produce images
 - **Validation**: Computes FID score to evaluate generative quality
 
----
-For questions or contributions, please open an issue or pull request.
+## Validation Scores
+
+| Model Type | FID Score |
+|------------|-----------|
+| U-Net      |  34.3883  |
+| CNN        |  57.8870  |
+| ResNet     |  45.0198  |

@@ -18,7 +18,8 @@ from config import Config
 class FIDValidator:
     def __init__(self, device=Config.DEVICE):
         self.device = device
-        self.fid = FrechetInceptionDistance(feature_dim=2048).to(device)
+        # Force FID computation to use CPU to avoid MPS linalg issues
+        self.fid = FrechetInceptionDistance(feature_dim=2048).to('cpu')
         
     def compute_fid(self, real_images, generated_images):
         """
@@ -32,8 +33,9 @@ class FIDValidator:
             FID score as float
         """
     # Convert images to float32 and ensure values are in [0, 1] for FID computation
-        real_images = real_images.to(torch.float32).clamp(0, 1)
-        generated_images = generated_images.to(torch.float32).clamp(0, 1)
+        # Move to CPU for FID computation to avoid MPS linalg issues
+        real_images = real_images.to('cpu').to(torch.float32).clamp(0, 1)
+        generated_images = generated_images.to('cpu').to(torch.float32).clamp(0, 1)
 
     # Update FID metric with real and generated images
         self.fid.update(real_images, is_real=True)

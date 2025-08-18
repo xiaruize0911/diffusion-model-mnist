@@ -49,9 +49,9 @@ class DiffusionModel(nn.Module):
         Returns:
             torch.Tensor: Less noisy images x_{t-1} of shape (B, C, H, W)
         """
-    alpha_t = self.beta_schedule.alphas[t].view(-1, 1, 1, 1)  # Scaling factor: controls retained portion of x_t
-    beta_t = self.beta_schedule.betas[t].view(-1, 1, 1, 1)    # Variance added at current diffusion step
-    alpha_bar_t = self.beta_schedule.alpha_bars[t].view(-1, 1, 1, 1)  # Cumulative product of alphas up to step t
+        alpha_t = self.beta_schedule.alphas[t].view(-1, 1, 1, 1)  # Scaling factor: controls retained portion of x_t
+        beta_t = self.beta_schedule.betas[t].view(-1, 1, 1, 1)    # Variance added at current diffusion step
+        alpha_bar_t = self.beta_schedule.alpha_bars[t].view(-1, 1, 1, 1)  # Cumulative product of alphas up to step t
         sigma_t = torch.sqrt(beta_t)
         mean = (1.0 / torch.sqrt(alpha_t)) * (
             xt - ((1.0 - alpha_t) / torch.sqrt(1.0 - alpha_bar_t)) * predicted_noise
