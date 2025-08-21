@@ -13,6 +13,8 @@ class DoubleConvBlock(nn.Module):
             nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),
             nn.ReLU(inplace=True),
             nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1),
             nn.ReLU(inplace=True)
         )
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -85,12 +87,12 @@ class Decoder(nn.Module):
             x = block(x)
         return x
 
-class UNet(nn.Module):
+class UNet2(nn.Module):
     """Main U-Net architecture for noise prediction."""
 
     def __init__(self, in_channels: int, out_channels: int, mid_channels: int) -> None:
         super().__init__()
-        channels = [1, 2, 4, 8, 16, 32, 64]
+        channels = [1, 2, 4, 8, 16, 32, 64, 128]
         self.encoder = Encoder(channels)
     # Prepare decoder channels by reversing and removing input channel
         decoder_channels = channels[::-1]  # [64, 32, 16, 8, 4, 2, 1]

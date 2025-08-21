@@ -6,6 +6,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from .unet import UNet
 from .SimpleCNN import SimpleCNN
+from .unet2 import UNet2
+from .ResNet2 import ResNet2
 from .ResNet import ResNet
 from config import Config
 from utils.noise_scheduler import NoiseScheduler
@@ -36,6 +38,10 @@ class DiffusionModel(nn.Module):
             self.net = SimpleCNN()
         elif Config.MODEL_TYPE == 'resnet':
             self.net = ResNet(in_channels=in_channels, out_channels=out_channels)
+        elif Config.MODEL_TYPE == 'unet2':
+            self.net = UNet2(in_channels=in_channels, out_channels=out_channels, mid_channels=mid_channels)
+        elif Config.MODEL_TYPE == 'resnet2':
+            self.net = ResNet2(in_channels=in_channels, out_channels=out_channels)
 
     def reverse_diffusion_step(self, xt: torch.Tensor, t: torch.Tensor, predicted_noise: torch.Tensor) -> torch.Tensor:
         """
