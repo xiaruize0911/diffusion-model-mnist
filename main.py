@@ -30,7 +30,6 @@ def train_model(experiment_name=None):
     dataloader = get_mnist_dataloader()
     device = Config.DEVICE
     model = DiffusionModel().to(device)
-    # model.load_state_dict(torch.load('./checkpoints/diffusion_model_resnet_2000epochs_300timesteps_0.0001lr/model_epoch_400.pth'))  # Load model weights from checkpoint
     optimizer = optim.Adam(model.parameters(), lr=Config.LEARNING_RATE)
     loss_history = []
     
@@ -120,7 +119,7 @@ def main() -> None:
     parser.add_argument('--batch_size', type=int, default=Config.BATCH_SIZE, help='Batch size')
     parser.add_argument('--timesteps', type=int, default=Config.TIMESTEPS, help='Number of diffusion timesteps')
     parser.add_argument('--experiment_name', type=str, default=None, help='Custom experiment name for TensorBoard')
-    parser.add_argument('--model_type', type=str, default=Config.MODEL_TYPE, choices=['unet', 'cnn', 'resnet','unet2','resnet2'], help='Type of model to use (unet or cnn)')
+    parser.add_argument('--model_type', type=str, default=Config.MODEL_TYPE, choices=['unet', 'cnn', 'resnet'], help='Type of model to use (unet or cnn)')
     args = parser.parse_args()
     
     # Update configuration parameters using command line arguments
