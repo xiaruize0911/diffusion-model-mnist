@@ -96,7 +96,7 @@ def main():
     """Main entry point for validation script with argument parsing."""
     parser = argparse.ArgumentParser()
     parser.add_argument('--experiment_name', type=str, default=None, help='Custom experiment name for TensorBoard')
-    parser.add_argument('--model_type', type=str, default=Config.MODEL_TYPE, choices=['unet', 'cnn', 'resnet'], help='Type of model to use (unet or cnn)')
+    parser.add_argument('--model_type', type=str, default=Config.MODEL_TYPE, choices=['unet', 'cnn', 'resnet', 'unet2'], help='Type of model to use (unet or cnn)')
     parser.add_argument('--model_index', type=str, help='The index number of the model')
     args = parser.parse_args()
     Config.MODEL_TYPE = args.model_type
