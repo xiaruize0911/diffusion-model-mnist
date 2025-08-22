@@ -21,8 +21,8 @@ from config import Config
 class FIDValidator:
     def __init__(self, device=Config.DEVICE):
         self.device = device
-        # Force FID computation to use CPU to avoid MPS linalg issues
-        self.fid = FrechetInceptionDistance(feature_dim=2048).to('cpu')
+        # Use the configured device for FID computation
+        self.fid = FrechetInceptionDistance(feature_dim=2048).to(device)
         
     def compute_fid(self, real_images, generated_images):
         """
@@ -36,9 +36,8 @@ class FIDValidator:
             FID score as float
         """
         # Convert images to float32 and ensure values are in [0, 1] for FID computation
-        # Move to CPU for FID computation to avoid MPS linalg issues
-        real_images = real_images.to('cpu').to(torch.float32).clamp(0, 1)
-        generated_images = generated_images.to('cpu').to(torch.float32).clamp(0, 1)
+        real_images = real_images.to(self.device).to(torch.float32).clamp(0, 1)
+        generated_images = generated_images.to(self.device).to(torch.float32).clamp(0, 1)
 
         # Update FID metric with real and generated images
         self.fid.update(real_images, is_real=True)
@@ -137,8 +136,8 @@ def validate_all_checkpoints(experiment_name: str, model_type: str, num_samples:
     Config.MODEL_TYPE = model_type  # type: ignore
     checkpoint_dir = os.path.join(Config.CHECKPOINT_DIR, experiment_name)
     
-    # Initialize TensorBoard logger for validation results
-    logger = TensorBoardLogger(Config.TENSORBOARD_LOG_DIR, f"{experiment_name}_validation")
+    # Initialize TensorBoard logger for validation results (using same experiment name as training)
+    logger = TensorBoardLogger(Config.TENSORBOARD_LOG_DIR, experiment_name)
     
     # Create FIDValidator instance
     validator = FIDValidator()
@@ -221,7 +220,7 @@ def main():
     parser.add_argument('--experiment_name', type=str, required=True, 
                        help='Experiment name (checkpoint directory name)')
     parser.add_argument('--model_type', type=str, default=Config.MODEL_TYPE, 
-                       choices=['unet', 'cnn', 'resnet'], 
+                       choices=['unet', 'cnn', 'resnet', 'unet2'], 
                        help='Type of model to use')
     parser.add_argument('--model_index', type=str, default=None,
                        help='Specific model epoch to validate (if not provided, validates all)')
