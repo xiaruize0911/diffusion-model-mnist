@@ -27,7 +27,7 @@ def train_model(experiment_name=None):
         experiment_name = f"diffusion_mnist_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     logger = TensorBoardLogger(Config.TENSORBOARD_LOG_DIR, experiment_name)
     
-    dataloader = get_mnist_dataloader()
+    dataloader = get_mnist_dataloader(batch_size=Config.BATCH_SIZE)
     device = Config.DEVICE
     model = DiffusionModel().to(device)
     optimizer = optim.Adam(model.parameters(), lr=Config.LEARNING_RATE)
@@ -124,22 +124,22 @@ def main() -> None:
     
     # Update configuration parameters using command line arguments
     if args.epochs != Config.EPOCHS:
-        Config.EPOCHS = args.epochs
+        Config.EPOCHS = args.epochs  
     if args.lr != Config.LEARNING_RATE:
-        Config.LEARNING_RATE = args.lr
+        Config.LEARNING_RATE = args.lr  
     if args.batch_size != Config.BATCH_SIZE:
-        Config.BATCH_SIZE = args.batch_size
+        Config.BATCH_SIZE = args.batch_size  
     if args.timesteps != Config.TIMESTEPS:
-        Config.TIMESTEPS = args.timesteps
+        Config.TIMESTEPS = args.timesteps  
     if args.model_type != Config.MODEL_TYPE:
-        Config.MODEL_TYPE = args.model_type
+        Config.MODEL_TYPE = args.model_type  
     if args.experiment_name is not None:
         # Use custom experiment name if specified
         experiment_name = args.experiment_name
     else:
         experiment_name = f'diffusion_model_{Config.MODEL_TYPE}_{Config.EPOCHS}epochs_{Config.TIMESTEPS}timesteps_{Config.LEARNING_RATE}lr'
-    Config.CHECKPOINT_DIR = os.path.join(Config.CHECKPOINT_DIR, experiment_name)
-    Config.OUTPUT_DIR = os.path.join(Config.OUTPUT_DIR, experiment_name) # pyright: ignore[reportAttributeAccessIssue]
+    Config.CHECKPOINT_DIR = os.path.join(Config.CHECKPOINT_DIR, experiment_name)  
+    Config.OUTPUT_DIR = os.path.join(Config.OUTPUT_DIR, experiment_name)  
     
     print(f"Training configuration:")
     print(f"  Epochs: {Config.EPOCHS}")
