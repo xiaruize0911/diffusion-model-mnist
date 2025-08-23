@@ -9,6 +9,7 @@ from .SimpleCNN import SimpleCNN
 from .unet2 import UNet2
 from .ResNet2 import ResNet2
 from .ResNet import ResNet
+from .dit import DiT
 from config import Config
 from utils.noise_scheduler import NoiseScheduler
 
@@ -42,6 +43,8 @@ class DiffusionModel(nn.Module):
             self.net = UNet2(in_channels=in_channels, out_channels=out_channels, mid_channels=mid_channels)
         elif Config.MODEL_TYPE == 'resnet2':
             self.net = ResNet2(in_channels=in_channels, out_channels=out_channels)
+        elif Config.MODEL_TYPE == 'dit':
+            self.net = DiT(in_channels=in_channels, out_channels=out_channels)
 
     def reverse_diffusion_step(self, xt: torch.Tensor, t: torch.Tensor, predicted_noise: torch.Tensor) -> torch.Tensor:
         """
@@ -78,7 +81,10 @@ class DiffusionModel(nn.Module):
         # Debug: print shape of t during forward diffusion
         noised_x, actual_noise = self.beta_schedule.add_noise(x0, t)
         # Debug: print shapes of noised_x and actual_noise
-        predicted_noise = self.net(noised_x)
+        if Config.MODEL_TYPE == 'dit':
+            predicted_noise = self.net(noised_x, t)
+        else:
+            predicted_noise = self.net(noised_x)
         return predicted_noise, actual_noise
 
     @torch.no_grad()
@@ -94,7 +100,10 @@ class DiffusionModel(nn.Module):
         xt = torch.randn(shape, device=device)
         for t in reversed(range(self.beta_schedule.timesteps)):
             t_tensor = torch.full((shape[0],), t, device=device)
-            predicted_noise = self.net(xt)
+            if Config.MODEL_TYPE == 'dit':
+                predicted_noise = self.net(xt, t_tensor)
+            else:
+                predicted_noise = self.net(xt)
             xt = self.reverse_diffusion_step(xt, t_tensor, predicted_noise)
         return xt
 

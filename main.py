@@ -119,7 +119,7 @@ def main() -> None:
     parser.add_argument('--batch_size', type=int, default=Config.BATCH_SIZE, help='Batch size')
     parser.add_argument('--timesteps', type=int, default=Config.TIMESTEPS, help='Number of diffusion timesteps')
     parser.add_argument('--experiment_name', type=str, default=None, help='Custom experiment name for TensorBoard')
-    parser.add_argument('--model_type', type=str, default=Config.MODEL_TYPE, choices=['unet', 'cnn', 'resnet', 'unet2', 'resnet2'], help='Type of model to use (unet or cnn)')
+    parser.add_argument('--model_type', type=str, default=Config.MODEL_TYPE, choices=['unet', 'cnn', 'resnet', 'unet2', 'resnet2', 'dit'], help='Type of model to use')
     args = parser.parse_args()
     
     # Update configuration parameters using command line arguments
