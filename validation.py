@@ -220,7 +220,7 @@ def main():
     parser.add_argument('--experiment_name', type=str, required=True, 
                        help='Experiment name (checkpoint directory name)')
     parser.add_argument('--model_type', type=str, default=Config.MODEL_TYPE, 
-                       choices=['unet', 'cnn', 'resnet', 'unet2', 'dit'], 
+                       choices=['unet', 'cnn', 'resnet','resnet2', 'unet2', 'dit'], 
                        help='Type of model to use')
     parser.add_argument('--model_index', type=str, default=None,
                        help='Specific model epoch to validate (if not provided, validates all)')
