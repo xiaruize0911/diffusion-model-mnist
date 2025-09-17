@@ -10,6 +10,7 @@ from datetime import datetime
 from generate import generate_images
 from config import Config
 from models import DiffusionModel
+from models.modiff import MoDiffModel
 from utils import get_mnist_dataloader, save_images, plot_loss, TensorBoardLogger
 
 def train_model(experiment_name=None):
@@ -29,7 +30,23 @@ def train_model(experiment_name=None):
     
     dataloader = get_mnist_dataloader(batch_size=Config.BATCH_SIZE)
     device = Config.DEVICE
-    model = DiffusionModel().to(device)
+    
+    # Create base diffusion model
+    base_model = DiffusionModel().to(device)
+    
+    # Wrap with MoDiff if enabled
+    if Config.ENABLE_MODIFF:
+        model = MoDiffModel(
+            base_model=base_model,
+            bit_width=Config.MODIFF_BIT_WIDTH,
+            enable_quantization=False,  # Disable during training
+            enable_error_compensation=Config.ENABLE_ERROR_COMPENSATION
+        ).to(device)
+        print(f"Using MoDiff with {Config.MODIFF_BIT_WIDTH}-bit quantization")
+    else:
+        model = base_model
+        print("Using standard diffusion model")
+    
     optimizer = optim.Adam(model.parameters(), lr=Config.LEARNING_RATE)
     loss_history = []
     
@@ -85,7 +102,20 @@ def train_model(experiment_name=None):
             
             # Generate sample images and log them to TensorBoard
             with torch.no_grad():
-                generated_images = model.sample((Config.NUM_SAMPLES, Config.CHANNELS, Config.IMAGE_SIZE, Config.IMAGE_SIZE), device)
+                if Config.ENABLE_MODIFF and isinstance(model, MoDiffModel):
+                    # Enable quantization for sampling
+                    model.enable_quantization = True
+                    generated_images = model.sample((Config.NUM_SAMPLES, Config.CHANNELS, Config.IMAGE_SIZE, Config.IMAGE_SIZE), device)
+                    model.enable_quantization = False  # Disable for training
+                    
+                    # Log MoDiff statistics
+                    stats = model.get_statistics()
+                    logger.log_scalar('MoDiff/BOPs_Reduction', stats['theoretical_bops_reduction'], epoch)
+                    logger.log_scalar('MoDiff/Memory_Savings', stats['memory_savings_ratio'], epoch)
+                    logger.log_scalar('MoDiff/Quantization_Calls', stats['quantization_calls'], epoch)
+                else:
+                    generated_images = model.sample((Config.NUM_SAMPLES, Config.CHANNELS, Config.IMAGE_SIZE, Config.IMAGE_SIZE), device)
+                
                 generated_images = torch.clamp(generated_images, 0.0, 1.0)
                 
                 # Log generated images to TensorBoard
@@ -120,6 +150,9 @@ def main() -> None:
     parser.add_argument('--timesteps', type=int, default=Config.TIMESTEPS, help='Number of diffusion timesteps')
     parser.add_argument('--experiment_name', type=str, default=None, help='Custom experiment name for TensorBoard')
     parser.add_argument('--model_type', type=str, default=Config.MODEL_TYPE, choices=['unet', 'cnn', 'resnet', 'unet2', 'resnet2', 'dit'], help='Type of model to use')
+    parser.add_argument('--enable_modiff', action='store_true', help='Enable MoDiff quantization')
+    parser.add_argument('--modiff_bit_width', type=int, default=Config.MODIFF_BIT_WIDTH, choices=[3, 4, 6, 8], help='MoDiff quantization bit width')
+    parser.add_argument('--disable_error_compensation', action='store_true', help='Disable MoDiff error compensation')
     args = parser.parse_args()
     
     # Update configuration parameters using command line arguments
@@ -133,11 +166,18 @@ def main() -> None:
         Config.TIMESTEPS = args.timesteps  
     if args.model_type != Config.MODEL_TYPE:
         Config.MODEL_TYPE = args.model_type  
+    if args.enable_modiff:
+        Config.ENABLE_MODIFF = True
+    if args.modiff_bit_width != Config.MODIFF_BIT_WIDTH:
+        Config.MODIFF_BIT_WIDTH = args.modiff_bit_width
+    if args.disable_error_compensation:
+        Config.ENABLE_ERROR_COMPENSATION = False
     if args.experiment_name is not None:
         # Use custom experiment name if specified
         experiment_name = args.experiment_name
     else:
-        experiment_name = f'diffusion_model_{Config.MODEL_TYPE}_{Config.EPOCHS}epochs_{Config.TIMESTEPS}timesteps_{Config.LEARNING_RATE}lr'
+        modiff_suffix = f"_modiff_{Config.MODIFF_BIT_WIDTH}bit" if Config.ENABLE_MODIFF else ""
+        experiment_name = f'diffusion_model_{Config.MODEL_TYPE}_{Config.EPOCHS}epochs_{Config.TIMESTEPS}timesteps_{Config.LEARNING_RATE}lr{modiff_suffix}'
     Config.CHECKPOINT_DIR = os.path.join(Config.CHECKPOINT_DIR, experiment_name)  
     Config.OUTPUT_DIR = os.path.join(Config.OUTPUT_DIR, experiment_name)  
     
@@ -146,7 +186,12 @@ def main() -> None:
     print(f"  Learning Rate: {Config.LEARNING_RATE}")
     print(f"  Batch Size: {Config.BATCH_SIZE}")
     print(f"  Timesteps: {Config.TIMESTEPS}")
+    print(f"  Model Type: {Config.MODEL_TYPE}")
     print(f"  Device: {Config.DEVICE}")
+    if Config.ENABLE_MODIFF:
+        print(f"  MoDiff: Enabled ({Config.MODIFF_BIT_WIDTH}-bit, error_compensation={Config.ENABLE_ERROR_COMPENSATION})")
+    else:
+        print(f"  MoDiff: Disabled")
     if experiment_name:
         print(f"  Experiment: {experiment_name}")
     

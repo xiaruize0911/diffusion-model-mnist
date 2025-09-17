@@ -37,5 +37,10 @@ class Config:
     # Configuration saving options
     SAVE_EACH_EPOCHS = 100
     
+    # MoDiff (Modulated Diffusion) quantization settings
+    ENABLE_MODIFF = True  # Enable MoDiff quantization during sampling
+    MODIFF_BIT_WIDTH = 3  # Quantization bit width (3-8 bits)
+    ENABLE_ERROR_COMPENSATION = True  # Enable error compensation in MoDiff
+    
     # TensorBoard logging and monitoring settings
     LOG_PARAMS_EVERY = 50  # Log model parameters every N epochs
