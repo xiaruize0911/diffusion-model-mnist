@@ -85,66 +85,59 @@ class MoDiffModel(nn.Module):
             torch.Tensor: Predicted noise with quantized activations
         """
         if not self.enable_quantization:
-            # If quantization disabled, use base model
-            if hasattr(self.base_model, 'net'):
-                if hasattr(self.base_model.net, 'forward') and hasattr(self.base_model, 'CONFIG') and getattr(self.base_model, 'CONFIG', {}).get('MODEL_TYPE') == 'dit':
-                    return self.base_model.net(xt, t)
-                else:
-                    return self.base_model.net(xt)
-            else:
-                return self.base_model(xt, t)[0]  # Return predicted noise only
+            # If quantization disabled, use base model directly
+            return self.base_model.net(xt, t)
         
         # Apply MoDiff quantization to model activations
-        with torch.no_grad():  # We're in sampling mode
-            # Hook into the model's forward pass to quantize intermediate activations
-            quantized_activations = {}
-            
-            def quantization_hook(name):
-                def hook_fn(module, input, output):
-                    if self.enable_quantization and isinstance(output, torch.Tensor):
-                        # Get previous state
-                        prev_activation, prev_error = self.modiff_state.get_prev_state(name)
-                        
-                        # Apply modulated quantization
-                        if self.enable_error_compensation:
-                            quantized_output, error = modulated_quantize(
-                                output, prev_activation, prev_error, 
-                                self.bit_width, training=False
-                            )
-                        else:
-                            # Use standard quantization without error compensation
-                            quantized_output = uniform_quantize(output, self.bit_width, training=False)
-                            error = output - quantized_output
-                        
-                        # Update state
-                        self.modiff_state.update(name, quantized_output, error)
-                        quantized_activations[name] = quantized_output
-                        self.stats['quantization_calls'] += 1
-                        
-                        # Replace output with quantized version
-                        return quantized_output
-                    return output
-                return hook_fn
-            
-            # Register hooks for key layers (conv layers in U-Net)
-            hooks = []
-            for name, module in self.base_model.net.named_modules():
-                if isinstance(module, (nn.Conv2d, nn.ConvTranspose2d, nn.Linear)):
-                    hook = module.register_forward_hook(quantization_hook(name))
-                    hooks.append(hook)
-            
-            try:
-                # Run forward pass with hooks
-                if hasattr(self.base_model, 'CONFIG') and getattr(self.base_model, 'CONFIG', {}).get('MODEL_TYPE') == 'dit':
-                    predicted_noise = self.base_model.net(xt, t)
-                else:
-                    predicted_noise = self.base_model.net(xt)
-            finally:
-                # Clean up hooks
-                for hook in hooks:
-                    hook.remove()
-            
-            return predicted_noise
+        # Store original activations and apply quantization layer by layer
+        quantized_activations = {}
+        
+        def create_quantization_hook(layer_name):
+            def hook_fn(module, input, output):
+                if isinstance(output, torch.Tensor) and output.requires_grad == False:
+                    # Get previous state for this layer
+                    prev_activation, prev_error = self.modiff_state.get_prev_state(layer_name)
+                    
+                    # Apply modulated quantization
+                    if self.enable_error_compensation and prev_activation is not None:
+                        quantized_output, error = modulated_quantize(
+                            output, prev_activation, prev_error, 
+                            self.bit_width, training=False
+                        )
+                    else:
+                        # First timestep or no error compensation
+                        quantized_output = uniform_quantize(output, self.bit_width, training=False)
+                        error = output - quantized_output
+                    
+                    # Update state for next timestep
+                    self.modiff_state.update(layer_name, output, error)
+                    quantized_activations[layer_name] = quantized_output
+                    self.stats['quantization_calls'] += 1
+                    
+                    # Return quantized output
+                    return quantized_output
+                return output
+            return hook_fn
+        
+        # Register hooks only for specific layers to avoid interference
+        hooks = []
+        hook_count = 0
+        for name, module in self.base_model.net.named_modules():
+            # Only hook key computational layers, not all layers
+            if isinstance(module, (nn.Conv2d, nn.ConvTranspose2d)) and hook_count < 5:
+                hook = module.register_forward_hook(create_quantization_hook(f"{name}_{hook_count}"))
+                hooks.append(hook)
+                hook_count += 1
+        
+        try:
+            # Run forward pass with quantization hooks
+            predicted_noise = self.base_model.net(xt, t)
+        finally:
+            # Always clean up hooks
+            for hook in hooks:
+                hook.remove()
+        
+        return predicted_noise
     
     @torch.no_grad()
     def sample(self, shape: tuple, device: torch.device) -> torch.Tensor:
@@ -158,10 +151,18 @@ class MoDiffModel(nn.Module):
         Returns:
             torch.Tensor: Generated samples
         """
+        # Reset state for new sampling
         self.reset_state()
+        
+        # If quantization is disabled, use base model directly
+        if not self.enable_quantization:
+            return self.base_model.sample(shape, device)
         
         # Start with random noise
         xt = torch.randn(shape, device=device)
+        
+        # Set model to eval mode for sampling
+        self.eval()
         
         # Iterative denoising with MoDiff quantization
         for i, t in enumerate(reversed(range(self.base_model.timesteps))):
@@ -170,7 +171,7 @@ class MoDiffModel(nn.Module):
             # Get predicted noise with quantized activations
             predicted_noise = self._quantized_forward(xt, t_tensor)
             
-            # Reverse diffusion step
+            # Perform reverse diffusion step
             xt = self.reverse_diffusion_step(xt, t_tensor, predicted_noise)
             
             self.stats['total_timesteps'] += 1

@@ -1,18 +1,20 @@
 """
-ResNet implementation for diffusion model.
-Uses the proper ResNet-18 architecture.
+ResNet implementation for diffusion model with timestep embedding.
+Uses the proper ResNet-18 architecture with timestep conditioning.
 """
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from typing import Optional
+from .timestep_embedding import TimestepEmbedder, ResBlockWithTimestep
 
 
 class BasicBlock(nn.Module):
-    """Basic residual block for ResNet-18/34."""
+    """Basic residual block for ResNet-18/34 with timestep conditioning."""
     expansion = 1
 
-    def __init__(self, in_channels, out_channels, stride=1, downsample=None):
+    def __init__(self, in_channels, out_channels, stride=1, downsample=None, timestep_dim=128):
         super(BasicBlock, self).__init__()
         
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, 
@@ -25,8 +27,14 @@ class BasicBlock(nn.Module):
         
         self.downsample = downsample
         self.stride = stride
+        
+        # Timestep conditioning
+        self.timestep_proj = nn.Sequential(
+            nn.SiLU(),
+            nn.Linear(timestep_dim, out_channels)
+        )
 
-    def forward(self, x):
+    def forward(self, x, t_emb: Optional[torch.Tensor] = None):
         identity = x
 
         out = self.conv1(x)
@@ -35,6 +43,11 @@ class BasicBlock(nn.Module):
 
         out = self.conv2(out)
         out = self.bn2(out)
+        
+        # Apply timestep conditioning
+        if t_emb is not None:
+            t_proj = self.timestep_proj(t_emb).unsqueeze(-1).unsqueeze(-1)
+            out = out + t_proj
 
         if self.downsample is not None:
             identity = self.downsample(x)
@@ -46,12 +59,16 @@ class BasicBlock(nn.Module):
 
 
 class ResNet18(nn.Module):
-    """ResNet-18 architecture adapted for diffusion models."""
+    """ResNet-18 architecture adapted for diffusion models with timestep conditioning."""
 
-    def __init__(self, in_channels=1, out_channels=1):
+    def __init__(self, in_channels=1, out_channels=1, timestep_dim=128):
         super(ResNet18, self).__init__()
         
         self.in_channels = 64
+        self.timestep_dim = timestep_dim
+        
+        # Timestep embedding
+        self.timestep_embedder = TimestepEmbedder(timestep_dim)
         
         # Initial convolution layer (keep spatial dimensions)
         self.conv1 = nn.Conv2d(in_channels, 64, kernel_size=3, stride=1, padding=1, bias=False)
@@ -91,13 +108,13 @@ class ResNet18(nn.Module):
             )
 
         layers = []
-        layers.append(block(self.in_channels, out_channels, stride, downsample))
+        layers.append(block(self.in_channels, out_channels, stride, downsample, self.timestep_dim))
         self.in_channels = out_channels * block.expansion
         
         for _ in range(1, blocks):
-            layers.append(block(self.in_channels, out_channels))
+            layers.append(block(self.in_channels, out_channels, timestep_dim=self.timestep_dim))
 
-        return nn.Sequential(*layers)
+        return nn.ModuleList(layers)
 
     def _initialize_weights(self):
         """Initialize weights following ResNet paper."""
@@ -108,18 +125,38 @@ class ResNet18(nn.Module):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
 
-    def forward(self, x):
-        """Forward pass."""
+    def forward(self, x, t: Optional[torch.Tensor] = None):
+        """
+        Forward pass with timestep conditioning.
+        
+        Args:
+            x (torch.Tensor): Input noisy images [B, C, H, W]
+            t (torch.Tensor): Timesteps [B]
+            
+        Returns:
+            torch.Tensor: Predicted noise [B, C, H, W]
+        """
+        # Generate timestep embeddings
+        if t is not None:
+            t_emb = self.timestep_embedder(t)  # [B, timestep_dim]
+        else:
+            # If no timestep provided, use zeros
+            t_emb = torch.zeros(x.shape[0], self.timestep_dim, device=x.device)
+        
         # Initial convolution
         x = self.conv1(x)
         x = self.bn1(x)
         x = F.relu(x)
         
-        # ResNet layers
-        x = self.layer1(x)
-        x = self.layer2(x)
-        x = self.layer3(x)
-        x = self.layer4(x)
+        # ResNet layers with timestep conditioning
+        for block in self.layer1:
+            x = block(x, t_emb)
+        for block in self.layer2:
+            x = block(x, t_emb)
+        for block in self.layer3:
+            x = block(x, t_emb)
+        for block in self.layer4:
+            x = block(x, t_emb)
         
         # Final output
         x = self.final_conv(x)
@@ -129,15 +166,15 @@ class ResNet18(nn.Module):
 
 class ResNet(nn.Module):
     """
-    ResNet wrapper for diffusion model compatibility.
+    ResNet wrapper for diffusion model compatibility with timestep conditioning.
     Uses the standard ResNet-18 architecture.
     """
     def __init__(self, in_channels=1, out_channels=1):
         super().__init__()
         self.resnet18 = ResNet18(in_channels=in_channels, out_channels=out_channels)
     
-    def forward(self, x):
-        return self.resnet18(x)
+    def forward(self, x, t: Optional[torch.Tensor] = None):
+        return self.resnet18(x, t)
 
 
 # Legacy implementation kept for backward compatibility

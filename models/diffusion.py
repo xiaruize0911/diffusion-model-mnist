@@ -81,10 +81,8 @@ class DiffusionModel(nn.Module):
         # Debug: print shape of t during forward diffusion
         noised_x, actual_noise = self.beta_schedule.add_noise(x0, t)
         # Debug: print shapes of noised_x and actual_noise
-        if Config.MODEL_TYPE == 'dit':
-            predicted_noise = self.net(noised_x, t)
-        else:
-            predicted_noise = self.net(noised_x)
+        # All models now support timestep conditioning
+        predicted_noise = self.net(noised_x, t)
         return predicted_noise, actual_noise
 
     @torch.no_grad()
@@ -100,10 +98,8 @@ class DiffusionModel(nn.Module):
         xt = torch.randn(shape, device=device)
         for t in reversed(range(self.beta_schedule.timesteps)):
             t_tensor = torch.full((shape[0],), t, device=device)
-            if Config.MODEL_TYPE == 'dit':
-                predicted_noise = self.net(xt, t_tensor)
-            else:
-                predicted_noise = self.net(xt)
+            # All models now support timestep conditioning
+            predicted_noise = self.net(xt, t_tensor)
             xt = self.reverse_diffusion_step(xt, t_tensor, predicted_noise)
         return xt
 

@@ -63,8 +63,8 @@ def modulated_quantize(activation: torch.Tensor,
     Returns:
         tuple[torch.Tensor, torch.Tensor]: (quantized_activation, quantization_error)
     """
-    if prev_activation is None:
-        # First timestep - quantize directly
+    if prev_activation is None or prev_activation.shape != activation.shape:
+        # First timestep or shape mismatch - quantize directly
         quantized = uniform_quantize(activation, bit_width, training)
         error = activation - quantized
         return quantized, error
@@ -73,7 +73,7 @@ def modulated_quantize(activation: torch.Tensor,
     residual = activation - prev_activation
     
     # Add error compensation from previous step
-    if prev_error is not None:
+    if prev_error is not None and prev_error.shape == residual.shape:
         residual = residual + prev_error
     
     # Quantize the residual
